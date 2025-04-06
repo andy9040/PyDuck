@@ -1,0 +1,16 @@
+README.md
+setup.py
+pyduck/__init__.py
+pyduck/compiler.py
+pyduck/io.py
+pyduck/quack.py
+pyduck/utils.py
+pyduck.egg-info/PKG-INFO
+pyduck.egg-info/SOURCES.txt
+pyduck.egg-info/dependency_links.txt
+pyduck.egg-info/requires.txt
+pyduck.egg-info/top_level.txt
+pyduck/operations/__init__.py
+pyduck/operations/assign.py
+pyduck/operations/filter.py
+pyduck/operations/groupby.py

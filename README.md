@@ -1,7 +1,34 @@
 # PyDuck
 PyDuck 🦆 is a high-performance Python library for ML data preprocessing, built on DuckDB with a Pandas-like API. It enables fast, multi-threaded, out-of-core processing, handling large datasets efficiently. PyDuck accelerates ML workflows by optimizing queries while ensuring seamless integration with Pandas and other data tools. 🚀
 
-### CAEN Set up
+## To Use
+Simply import like any other package
+```
+pip install pyduck
+```
+
+## Set Up for Developers
+
+Install all requirements.
+```
+pip install -r requirements.txt
+```
+
+## Testing for Developers
+Make sure you are in the outer PyDuck directory.
+
+To install the package locally for testing (recommended):
+```
+pip install -e .
+```
+
+To run the testing suite in `testing/`
+```
+python3 -m pytest testing/ 
+```
+
+
+##### CAEN Set up [Work in Progress]
 
 python3
 ```
