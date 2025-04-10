@@ -3,7 +3,7 @@ from .compiler import SQLCompiler
 
 class Quack:
     def __init__(self, table_name, conn=None, operations=None):
-        import duckdb
+        import duckdb # type: ignore
         self.table_name = table_name
         self.conn = conn or duckdb.connect()
         self.operations = operations or []  # list of (operation, args)
@@ -21,6 +21,41 @@ class Quack:
             conn=self.conn,
             operations=self.operations + [new_op]
         )
+
+    def __getitem__(self, key):
+        # Case 1: Selecting columns
+        if isinstance(key, str):
+            return self._copy_with(("select", [key]))
+        
+        elif isinstance(key, list):
+            return self._copy_with(("select", key))
+        
+        # Case 2: Filtering with a condition string
+        elif isinstance(key, Quack):
+            # Assume the key is a Quack representing a boolean condition
+            # You can refine this if you later support Series-like filters
+            raise NotImplementedError("Boolean masking with a Quack object isn't implemented yet.")
+
+        elif isinstance(key, slice):
+            start = key.start or 0
+            stop = key.stop
+            if stop is None:
+                raise ValueError("Slice must have a stop value")
+            return self._copy_with(("limit_offset", (stop - start, start)))
+
+        else:
+            raise TypeError(f"Unsupported key type: {type(key)}")
+
+    def __setitem__(self, key, value):
+        # Key is column name, value is expression string
+        if not isinstance(key, str):
+            raise TypeError("Column name must be a string")
+        if not isinstance(value, str):
+            raise TypeError("Value must be a SQL expression string")
+
+        # Use your assign logic
+        self.operations.append(("assign", {key: value}))
+
 
     def filter(self, condition):
         """
@@ -49,6 +84,16 @@ class Quack:
         Example: dp.groupby("col").agg({"value": "mean"})
         """
         return self._copy_with(("agg", agg_dict))
+
+    def get_dummies(quack, column, values, inplace=True):
+        assignments = {
+            f"{column}_{val}": f"CASE WHEN {column} = '{val}' THEN 1 ELSE 0 END"
+            for val in values
+        }
+        if inplace:
+            quack.operations.append(("assign", assignments))
+            return None
+        return quack.assign(**assignments)
 
     def to_sql(self):
         """

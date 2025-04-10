@@ -33,6 +33,37 @@ def test_assign():
     assert "senior" in result.columns
     assert result[result["name"] == "Diana"]["senior"].values[0] == True
 
+def test_getitem_column_select():
+    dp = setup_duck()
+    result = dp[["name", "salary"]].to_df()
+    assert list(result.columns) == ["name", "salary"]
+    assert result.shape == (4, 2)
+
+def test_getitem_slice_rows():
+    dp = setup_duck()
+    result = dp[1:3].to_df()
+    assert result.shape[0] == 2
+    assert result.iloc[0]["name"] == "Bob"
+    assert result.iloc[1]["name"] == "Charlie"
+
+def test_setitem_overwrite_column():
+    dp = setup_duck()
+    dp["age"] = "age + 10"
+    result = dp.to_df()
+    assert "age" in result.columns
+    assert list(result["age"]) == [35, 45, 55, 65]
+
+def test_get_dummies():
+    dp = setup_duck()
+    dp.get_dummies("name", ["Alice", "Bob"])
+    df = dp.to_df()
+    assert "name_Alice" in df.columns
+    assert "name_Bob" in df.columns
+    assert df[df["name"] == "Alice"]["name_Alice"].values[0] == 1
+    assert df[df["name"] == "Bob"]["name_Bob"].values[0] == 1
+
+
+
 # def test_groupby_agg():
 #     conn = duckdb.connect()
 #     df = pd.DataFrame({
@@ -51,3 +82,4 @@ def test_to_sql_output():
     sql = dp.to_sql()
     assert "WHERE age > 40" in sql
     assert "retired" in sql
+
