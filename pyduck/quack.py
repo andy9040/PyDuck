@@ -78,12 +78,12 @@ class Quack:
             cols = [cols]
         return self._copy_with(("groupby", cols))
 
-    def agg(self, agg_dict):
+    def agg(self, agg_val):
         """
         Perform aggregation functions after a groupby.
         Example: dp.groupby("col").agg({"value": "mean"})
         """
-        return self._copy_with(("agg", agg_dict))
+        return self._copy_with(("agg", agg_val))
 
     def get_dummies(quack, column, values, inplace=True):
         assignments = {
@@ -95,11 +95,52 @@ class Quack:
             return None
         return quack.assign(**assignments)
 
+    def rename(self, columns):
+        """
+        Rename columns based on a dictionary mapping of old to new names.
+        For example, dp.rename({"old_col": "new_col"})
+        """
+        return self._copy_with(("rename", columns))
+    
+    def isna(self, columns=None):
+        """
+        Produces a DataFrame of booleans indicating which values are NULL. 
+        If `columns` is provided, only those columns are processed; otherwise, all columns are processed.
+        """
+        return self._copy_with(("isna", columns))
+    
+    def sum(self):
+        """
+        Sum across all rows for each column. intended to go with pd.isna()
+        """
+        return self.agg(["sum"])
+    
+    def dropna(self, axis=0):
+        """
+        Drop missing values along rows (axis=0) or columns (axis=1).
+        """
+        if axis == 0:
+            return self._copy_with(("dropna_rows", None))
+        elif axis == 1:
+            return self._copy_with(("dropna_columns", None))
+        else:
+            raise ValueError("axis must be 0 or 1")
+    
+    def fillna(self, fill_value):
+        """
+        When fill_value is a scalar, replaces missing values in every column with that scalar.
+        When fill_value is a dict, applies per-column replacements.
+            - when fill_value is a dict, "mean" or "median" is acceptable
+        """
+        return self._copy_with(("fillna", fill_value))
+
+
     def to_sql(self):
         """
         Compile the chain of operations into a final SQL query.
         """
-        return SQLCompiler(self.table_name, self.operations).compile()
+        #return SQLCompiler(self.table_name, self.operations).compile()
+        return SQLCompiler(self.table_name, self.operations, self.conn).compile()
 
     def to_df(self):
         """
@@ -118,7 +159,6 @@ class Quack:
         Preview the top N rows of the original DuckDB table.
         """
         return self.conn.execute(f"SELECT * FROM {self.table_name} LIMIT {n}").fetchall()
-
 
     def debug(self):
         """

@@ -1,18 +1,71 @@
+import re
+
 def apply_groupby(query, cols):
     # Save groupby columns inside a comment in the SQL (or persist elsewhere)
     # In a real version, you’d use an object, not raw SQL
     return f"--GROUPBY {','.join(cols)}\n{query}"
 
-# query: groupy col1
-# query 
 
-def apply_agg(query, agg_dict):
-    # Assume last groupby was just before this (simplified)
-    groupby_cols = []
+def apply_agg(query, agg_val, table_name=None, conn=None):
+    # Check if query has a groupby context (the "--GROUPBY" comment)
     if query.startswith("--GROUPBY"):
+        groupby_cols = []
         line, query = query.split("\n", 1)
         groupby_cols = line.replace("--GROUPBY ", "").split(",")
 
-    group_clause = ", ".join(groupby_cols)
-    select_clause = ", ".join(groupby_cols + [f"{func.upper()}({col}) AS {col}_{func}" for col, func in agg_dict.items()])
-    return f"SELECT {select_clause} FROM ({query}) GROUP BY {group_clause}"
+        # Helper function to quote SQL identifiers
+        def quote_identifier(identifier):
+            return f'"{identifier}"'
+
+        # Build the GROUP BY clause with quoted identifiers
+        group_clause = ", ".join(quote_identifier(col) for col in groupby_cols)
+        
+        # Expect agg_val to be a dictionary in a groupby context.
+        if not isinstance(agg_val, dict):
+            raise ValueError("For groupby aggregation, a dictionary mapping is expected.")
+            
+        select_clause = ", ".join(
+            [quote_identifier(col) for col in groupby_cols] +
+            [f"{func.upper()}({quote_identifier(col)}) AS {quote_identifier(col + '_' + func)}"
+             for col, func in agg_val.items()]
+        )
+        
+        return f"SELECT {select_clause} FROM ({query}) GROUP BY {group_clause}"
+    else:
+        # Global aggregation. We assume queries start with SELECT * Use a regex to detect and capture the FROM clause.
+        # You can't do SUM(*) in SQL, you have to do SUM(col1). SUM(col2),... etc
+        # star_match = re.match(r"SELECT\s+\*\s+(FROM\s+.+)", query, re.IGNORECASE)
+        # if not star_match:
+        #     raise ValueError("Global aggregation currently only supports queries starting with SELECT *")
+            
+        # rest_of_query = star_match.group(1)
+        # # Retrieve column names dynamically using DuckDB's PRAGMA if SELECT * is used.
+        # if conn is None or table_name is None:
+        #     raise ValueError("Connection and table name are required to expand SELECT * for aggregation.")
+        
+        # CAN WE SKIP THIS REGEX FOR SELECT *???, OUR QUERIES ALWAYS START with SELECT* anyways right?
+        
+        col_info = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        schema = [row[1] for row in col_info]
+        
+        # Determine the aggregation functions.
+        # If agg_val is a list, apply each function to all columns.
+        if isinstance(agg_val, list):
+            select_exprs = []
+            for col in schema:
+                for func in agg_val:
+                    select_exprs.append(f"{func.upper()}({col}) AS {col}_{func}")
+            select_clause = ", ".join(select_exprs)
+        else:
+            raise ValueError("agg must be a list for global aggregation.")
+        
+        # Wrap the existing query as a subquery and apply the aggregation.
+        return f"SELECT {select_clause} FROM ({query}) AS subquery"
+    
+    
+    """
+    Example query for the test case
+    SELECT SUM(name) AS name_sum, SUM(age) AS age_sum, SUM(salary) AS salary_sum 
+    FROM (SELECT <boolean expressions for each column> FROM (SELECT * FROM people) AS subquery) AS subquery
+    """
+

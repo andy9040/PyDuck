@@ -1,3 +1,4 @@
+LICENSE
 README.md
 setup.py
 pyduck/__init__.py
@@ -14,3 +15,4 @@ pyduck/operations/__init__.py
 pyduck/operations/assign.py
 pyduck/operations/filter.py
 pyduck/operations/groupby.py
+pyduck/operations/select.py

@@ -1,10 +1,7 @@
-Metadata-Version: 1.0
+Metadata-Version: 2.2
 Name: pyduck
 Version: 0.1
-Summary: UNKNOWN
-Home-page: UNKNOWN
-Author: UNKNOWN
-Author-email: UNKNOWN
-License: UNKNOWN
-Description: UNKNOWN
-Platform: UNKNOWN
+License-File: LICENSE
+Requires-Dist: duckdb
+Requires-Dist: pandas
+Dynamic: requires-dist
