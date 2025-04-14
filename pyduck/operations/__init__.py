@@ -6,6 +6,9 @@ from .rename import apply_rename
 from .isna import apply_isna
 from .dropna import apply_dropna_rows, apply_dropna_columns
 from .fillna import apply_fillna  # add this line
+from .drop_columns import apply_drop_columns
+from .drop_duplicates import apply_drop_duplicates
+from .sample import apply_sample
 
 def apply_operation(query, op, val, **kwargs):
     if op == "filter":
@@ -30,5 +33,11 @@ def apply_operation(query, op, val, **kwargs):
         return apply_dropna_columns(query, val, **kwargs)
     elif op == "fillna":
         return apply_fillna(query, val, **kwargs)
+    elif op == "drop_columns":
+        return apply_drop_columns(query, val, **kwargs) 
+    elif op == "drop_duplicates":
+        return apply_drop_duplicates(query, val, **kwargs)
+    elif op == "sample":
+        return apply_sample(query, val, **kwargs)
     else:
         raise ValueError(f"Unsupported operation: {op}")

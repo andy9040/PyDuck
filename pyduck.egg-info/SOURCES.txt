@@ -13,6 +13,11 @@ pyduck.egg-info/requires.txt
 pyduck.egg-info/top_level.txt
 pyduck/operations/__init__.py
 pyduck/operations/assign.py
+pyduck/operations/drop_columns.py
+pyduck/operations/dropna.py
+pyduck/operations/fillna.py
 pyduck/operations/filter.py
 pyduck/operations/groupby.py
+pyduck/operations/isna.py
+pyduck/operations/rename.py
 pyduck/operations/select.py

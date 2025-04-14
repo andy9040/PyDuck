@@ -291,7 +291,185 @@ def test_fillna_median():
     np.testing.assert_allclose(result.loc[1, "A"], expected_median_A, rtol=1e-5)
     np.testing.assert_allclose(result.loc[1, "B"], expected_median_B, rtol=1e-5)
 
+def test_drop_columns():
+    dp = setup_duck()
+    
+    # Drop a single column
+    result_single = dp.drop(columns="age").to_df()
+    assert "age" not in result_single.columns
+    assert "name" in result_single.columns
+    assert "salary" in result_single.columns
+    assert result_single.shape[1] == 2  # should have 2 columns left
+
+    # Drop multiple columns
+    result_multiple = dp.drop(columns=["name", "salary"]).to_df()
+    assert "name" not in result_multiple.columns
+    assert "salary" not in result_multiple.columns
+    assert "age" in result_multiple.columns
+    assert result_multiple.shape[1] == 1  # only one column left
 
 
+# Integration test 
+def test_full_pipeline():
+    data = {
+        "name": ["Alice", "Bob", "Charlie", None],
+        "age": [25, 35, None, 55],
+        "salary": [50000, 60000, 70000, None],
+        "department": ["HR", "Engineering", "HR", "Marketing"]
+    }
+
+    df = pd.DataFrame(data)
+    conn = duckdb.connect()
+    conn.register("people", df)
+    dp = Quack("people", conn=conn)
+
+    # Full pipeline: fillna, assign, filter, get_dummies, drop, groupby + agg, rename
+    result = (
+    dp
+    .fillna({"age": 99, "salary": 0})
+    .filter("age < 100")
+    .get_dummies("department", ["HR", "Engineering"], inplace=False)
+    .drop(columns="department")
+    .assign(income_bracket="salary > 55000")  # moved later!
+    .groupby("income_bracket")
+    .agg({"salary": "mean", "age": "max"})
+    .rename({"salary_mean": "avg_salary", "age_max": "oldest"})
+    .to_df()
+    )
+
+    # Expected columns and row count
+    assert "avg_salary" in result.columns
+    assert "oldest" in result.columns
+    assert "income_bracket" in result.columns
+    assert result.shape[0] == 2  # True and False brackets
+
+# def test_drop_duplicates():
+#     df = pd.DataFrame({
+#         "brand": ["Yum Yum", "Yum Yum", "Indomie", "Indomie", "Indomie"],
+#         "style": ["cup", "cup", "cup", "pack", "pack"],
+#         "rating": [4, 4, 3.5, 15, 5]
+#     })
+
+#     conn = duckdb.connect()
+#     conn.register("ramen", df)
+#     dp = Quack("ramen", conn=conn)
+
+#     # Drop full row duplicates
+#     result = dp.drop_duplicates().to_df()
+#     assert result.shape[0] == 4
+
+#     # Drop based on brand only
+#     result = dp.drop_duplicates(subset="brand").to_df()
+#     assert set(result["brand"]) == {"Yum Yum", "Indomie"}
 
 
+def test_drop_duplicates():
+    df = pd.DataFrame({
+        "brand": ["Yum Yum", "Yum Yum", "Indomie", "Indomie", "Indomie"],
+        "style": ["cup", "cup", "cup", "pack", "pack"],
+        "rating": [4, 4, 3.5, 15, 5]
+    })
+
+    conn = duckdb.connect()
+    conn.register("ramen", df)
+    dp = Quack("ramen", conn=conn)
+
+    # Case 1: Drop duplicate rows across all columns
+    result_all = dp.drop_duplicates().to_df()
+    expected_all = pd.DataFrame({
+        "brand": ["Yum Yum", "Indomie", "Indomie", "Indomie"],
+        "style": ["cup", "cup", "pack", "pack"],
+        "rating": [4, 3.5, 15, 5]
+    })
+    pd.testing.assert_frame_equal(result_all.sort_values(by=["brand", "style", "rating"]).reset_index(drop=True),
+                                   expected_all.sort_values(by=["brand", "style", "rating"]).reset_index(drop=True))
+
+    # Case 2: Drop duplicates based only on 'brand'
+    result_brand = dp.drop_duplicates(subset="brand").to_df()
+    assert set(result_brand["brand"]) == {"Yum Yum", "Indomie"}
+    assert result_brand.drop_duplicates(subset="brand").shape[0] == 2
+
+    # Case 3: Drop duplicates based on ['brand', 'style']
+    result_brand_style = dp.drop_duplicates(subset=["brand", "style"]).to_df()
+    expected_combos = {
+        ("Yum Yum", "cup"),
+        ("Indomie", "cup"),
+        ("Indomie", "pack")
+    }
+    actual_combos = set(zip(result_brand_style["brand"], result_brand_style["style"]))
+    assert actual_combos == expected_combos
+    assert result_brand_style.shape[0] == 3
+
+    # Case 4: Ensure ROW_NUMBER keeps only the first occurrence
+    # e.g., the first Yum Yum cup 4 rating should be preserved
+    assert result_brand_style[(result_brand_style["brand"] == "Yum Yum") & (result_brand_style["style"] == "cup")]["rating"].values[0] == 4
+
+    print("All drop_duplicates test cases passed.")
+
+def test_sample():
+    df = pd.DataFrame({
+        "id": range(10),
+        "value": [x * 10 for x in range(10)]
+    })
+    conn = duckdb.connect()
+    conn.register("sample_table", df)
+    dp = Quack("sample_table", conn=conn)
+
+    # Sample 3 rows without replacement
+    result_n = dp.sample(n=3, random_state=42).to_df()
+    assert result_n.shape[0] == 3
+    assert set(result_n.columns) == {"id", "value"}
+
+    # Sample 50% with replacement
+    result_frac = dp.sample(frac=0.5, replace=True, random_state=1).to_df()
+    assert result_frac.shape[0] == 5
+
+
+# Dropna + Rename + Groupby + Agg
+def test_dropna_rename_groupby_agg():
+    df = pd.DataFrame({
+        "dept": ["Sales", "Sales", "HR", "HR", None],
+        "salary": [50000, None, 60000, 55000, 40000],
+        "level": ["junior", "senior", "senior", "junior", "junior"]
+    })
+
+    conn = duckdb.connect()
+    conn.register("employees", df)
+    dp = Quack("employees", conn=conn)
+
+    result = (
+        dp
+        .dropna(axis=0)
+        .rename({"dept": "department"})
+        .groupby("department")
+        .agg({"salary": "mean"})
+        .to_df()
+    )
+
+    assert result.shape[0] == 2
+    assert "salary_mean" in result.columns
+    assert set(result["department"]) == {"Sales", "HR"}
+
+
+# Assign + Drop Duplicates + Filter
+def test_assign_drop_duplicates_filter():
+    df = pd.DataFrame({
+        "user": ["A", "B", "B", "C", "A", "C"],
+        "clicks": [5, 10, 10, 7, 5, 7]
+    })
+
+    conn = duckdb.connect()
+    conn.register("logs", df)
+    dp = Quack("logs", conn=conn)
+
+    result = (
+        dp
+        .assign(double_clicks="clicks * 2")
+        .drop_duplicates()
+        .filter("double_clicks > 10")
+        .to_df()
+    )
+
+    assert result.shape[0] == 2
+    assert set(result["user"]) == {"B", "C"}
+    assert all(result["double_clicks"] > 10)

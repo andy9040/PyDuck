@@ -165,3 +165,45 @@ class Quack:
         Print the list of accumulated operations.
         """
         print("Operations:", self.operations)
+
+    def drop(self, columns=None):
+        """
+        Drop one or more columns from the table (like pandas drop(columns=[...])).
+        """
+        if columns is None:
+            raise ValueError("You must specify columns to drop")
+        if isinstance(columns, str):
+            columns = [columns]
+        return self._copy_with(("drop_columns", columns))
+    
+    def drop_duplicates(self, subset=None):
+        """
+        Drop duplicate rows based on all columns (default) or a subset of columns.
+        Mimics pandas.drop_duplicates().
+        
+        Parameters:
+            subset (list[str] or str): Columns to consider for identifying duplicates.
+        """
+        return self._copy_with(("drop_duplicates", subset))
+    
+    def sample(self, n=None, frac=None, replace=False, random_state=None):
+        """
+        Randomly sample rows from the DataFrame.
+        
+        Parameters:
+            n (int): Number of rows to return.
+            frac (float): Fraction of rows to return.
+            replace (bool): Sample with replacement (True) or not (False).
+            random_state (int): Seed for reproducibility.
+        """
+        if n is None and frac is None:
+            raise ValueError("Must specify either n or frac")
+        if n is not None and frac is not None:
+            raise ValueError("Cannot specify both n and frac")
+
+        return self._copy_with(("sample", {
+            "n": n,
+            "frac": frac,
+            "replace": replace,
+            "random_state": random_state
+        }))
