@@ -9,6 +9,8 @@ from .fillna import apply_fillna  # add this line
 from .drop_columns import apply_drop_columns
 from .drop_duplicates import apply_drop_duplicates
 from .sample import apply_sample
+from .merge import apply_merge
+# from .join import apply_join  
 
 def apply_operation(query, op, val, **kwargs):
     if op == "filter":
@@ -39,5 +41,9 @@ def apply_operation(query, op, val, **kwargs):
         return apply_drop_duplicates(query, val, **kwargs)
     elif op == "sample":
         return apply_sample(query, val, **kwargs)
+    elif op == "merge":
+        return apply_merge(query, val, **kwargs)
+    # elif op == "join":
+    #     return apply_join(query, val, **kwargs) 
     else:
         raise ValueError(f"Unsupported operation: {op}")

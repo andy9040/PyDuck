@@ -473,3 +473,129 @@ def test_assign_drop_duplicates_filter():
     assert result.shape[0] == 2
     assert set(result["user"]) == {"B", "C"}
     assert all(result["double_clicks"] > 10)
+
+
+def test_merge_quack():
+    df1 = pd.DataFrame({"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]})
+    df2 = pd.DataFrame({"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]})
+
+    conn = duckdb.connect()
+    conn.register("left_table", df1)
+    conn.register("right_table", df2)
+
+    left = Quack("left_table", conn=conn)
+    right = Quack("right_table", conn=conn)
+
+    result = left.merge(right, left_on="lkey", right_on="rkey", suffixes=("_left", "_right")).to_df()
+    print(result)
+
+    assert "lkey" in result.columns
+    assert "rkey" in result.columns
+    assert "value_left" in result.columns
+    assert "value_right" in result.columns
+    assert result.shape[0] == 6
+
+def test_merge_join_types():
+    df1 = pd.DataFrame({"a": ["foo", "bar"], "b": [1, 2]})
+    df2 = pd.DataFrame({"a": ["foo", "baz"], "c": [3, 4]})
+
+    conn = duckdb.connect()
+    conn.register("left_df", df1)
+    conn.register("right_df", df2)
+
+    q1 = Quack("left_df", conn=conn)
+    q2 = Quack("right_df", conn=conn)
+
+    # INNER JOIN
+    inner = q1.merge(q2, how="inner", on="a").to_df()
+    assert inner.shape == (1, 3)
+    assert inner["a"].iloc[0] == "foo"
+    assert inner["b"].iloc[0] == 1
+    assert inner["c"].iloc[0] == 3
+    # print(inner)
+
+    # LEFT JOIN
+    left = q1.merge(q2, how="left", on="a").to_df()
+    assert left.shape == (2, 3)
+    assert left["a"].iloc[1] == "bar"
+    assert pd.isna(left["c"].iloc[1])
+    # print(left)
+
+    # RIGHT JOIN
+    right = q1.merge(q2, how="right", on="a").to_df()
+    # print(right)
+    assert right.shape == (2, 3)
+    assert right["a"].iloc[1] == "baz"
+    assert pd.isna(right["b"].iloc[1])
+
+
+def test_merge_with_assign_and_filter():
+    df1 = pd.DataFrame({"user": ["u1", "u2"], "score": [50, 80]})
+    df2 = pd.DataFrame({"user": ["u1", "u2"], "bonus": [10, 5]})
+
+    conn = duckdb.connect()
+    conn.register("users", df1)
+    conn.register("rewards", df2)
+
+    users = Quack("users", conn=conn)
+    rewards = Quack("rewards", conn=conn)
+
+    result = (
+        users.merge(rewards, on="user")
+             .assign(final="score + bonus")
+             .filter("final >= 60")
+             .to_df()
+    )
+
+    # print(result)
+
+    assert result.shape == (2, 4)
+    assert set(result["user"]) == {"u1", "u2"}
+    assert set(result["final"]) == {60, 85}
+
+def test_merge_with_fillna():
+    df1 = pd.DataFrame({"id": [1, 2], "val": [100, 200]})
+    df2 = pd.DataFrame({"id": [1], "extra": [999]})
+
+    conn = duckdb.connect()
+    conn.register("main", df1)
+    conn.register("info", df2)
+
+    main = Quack("main", conn=conn)
+    info = Quack("info", conn=conn)
+
+    # result = (
+    #     main.merge(info, on="id", how="left")
+    #         .fillna({"extra": 0})
+    #         .to_df()
+    # )
+
+    main = main.merge(info, on="id", how="left").fillna({"extra": 0})
+    
+    print(main.to_sql())
+    result = main.to_df()
+    assert result.shape == (2, 3)
+    assert result.loc[result["id"] == 2, "extra"].iloc[0] == 0
+
+
+
+
+
+# def test_join_quack():
+#     df1 = pd.DataFrame({"key": ["K0", "K1", "K2", "K3"], "A": ["A0", "A1", "A2", "A3"]})
+#     df2 = pd.DataFrame({"key": ["K0", "K1", "K2"], "B": ["B0", "B1", "B2"]})
+
+#     conn = duckdb.connect()
+#     conn.register("left_table", df1)
+#     conn.register("right_table", df2)
+
+#     q1 = Quack("left_table", conn=conn)
+#     q2 = Quack("right_table", conn=conn)
+
+#     joined = q1.join(q2, on="key", lsuffix="_left", rsuffix="_right").to_df()
+#     print(joined)
+
+#     assert "key" in joined.columns
+#     assert "A_left" in joined.columns or "A" in joined.columns
+#     assert "B_right" in joined.columns or "B" in joined.columns
+#     assert joined.shape[0] == 4

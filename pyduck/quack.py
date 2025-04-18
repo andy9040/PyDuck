@@ -207,3 +207,55 @@ class Quack:
             "replace": replace,
             "random_state": random_state
         }))
+    
+    def merge(self, right, how="inner",on=None, left_on=None, right_on=None, suffixes=("_x", "_y"),):
+        """
+        Merge two Quack DataFrames using SQL JOIN.
+        Mimics pandas.merge().
+        
+        Parameters:
+            right (Quack): other Quack dataframe
+            how (str): one of 'inner', 'left', 'right', 'outer'
+            on (str or list): column(s) to join on (same name in both frames)
+            left_on (str or list): column(s) from self to join on
+            right_on (str or list): column(s) from right to join on
+            suffixes (tuple): suffixes for overlapping columns
+        """
+        if not isinstance(right, Quack):
+            raise TypeError("right must be a Quack object")
+
+        return self._copy_with((
+            "merge",
+            {
+                "right": right,
+                "how": how,
+                "on": on,
+                "left_on": left_on,
+                "right_on": right_on,
+                "suffixes": suffixes
+            }
+    ))
+    
+    # def join(self, other, on=None, how="left", lsuffix="", rsuffix=""):
+    #     """
+    #     Join two Quack DataFrames together, similar to pandas.DataFrame.join().
+        
+    #     Parameters:
+    #         other (Quack): another Quack table
+    #         on (str or list): column(s) to join on
+    #         how (str): one of 'left', 'right', 'inner', 'outer'
+    #         lsuffix (str): suffix for overlapping columns in left
+    #         rsuffix (str): suffix for overlapping columns in right
+    #     """
+    #     if not isinstance(other, Quack):
+    #         raise TypeError("Only joining with another Quack is supported.")
+
+    #     return self._copy_with((
+    #         "join", {
+    #             "other": other,
+    #             "on": on,
+    #             "how": how,
+    #             "lsuffix": lsuffix,
+    #             "rsuffix": rsuffix
+    #         }
+    #     ))
