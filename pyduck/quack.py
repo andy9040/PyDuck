@@ -165,3 +165,97 @@ class Quack:
         Print the list of accumulated operations.
         """
         print("Operations:", self.operations)
+
+    def drop(self, columns=None):
+        """
+        Drop one or more columns from the table (like pandas drop(columns=[...])).
+        """
+        if columns is None:
+            raise ValueError("You must specify columns to drop")
+        if isinstance(columns, str):
+            columns = [columns]
+        return self._copy_with(("drop_columns", columns))
+    
+    def drop_duplicates(self, subset=None):
+        """
+        Drop duplicate rows based on all columns (default) or a subset of columns.
+        Mimics pandas.drop_duplicates().
+        
+        Parameters:
+            subset (list[str] or str): Columns to consider for identifying duplicates.
+        """
+        return self._copy_with(("drop_duplicates", subset))
+    
+    def sample(self, n=None, frac=None, replace=False, random_state=None):
+        """
+        Randomly sample rows from the DataFrame.
+        
+        Parameters:
+            n (int): Number of rows to return.
+            frac (float): Fraction of rows to return.
+            replace (bool): Sample with replacement (True) or not (False).
+            random_state (int): Seed for reproducibility.
+        """
+        if n is None and frac is None:
+            raise ValueError("Must specify either n or frac")
+        if n is not None and frac is not None:
+            raise ValueError("Cannot specify both n and frac")
+
+        return self._copy_with(("sample", {
+            "n": n,
+            "frac": frac,
+            "replace": replace,
+            "random_state": random_state
+        }))
+    
+    def merge(self, right, how="inner",on=None, left_on=None, right_on=None, suffixes=("_x", "_y"),):
+        """
+        Merge two Quack DataFrames using SQL JOIN.
+        Mimics pandas.merge().
+        
+        Parameters:
+            right (Quack): other Quack dataframe
+            how (str): one of 'inner', 'left', 'right', 'outer'
+            on (str or list): column(s) to join on (same name in both frames)
+            left_on (str or list): column(s) from self to join on
+            right_on (str or list): column(s) from right to join on
+            suffixes (tuple): suffixes for overlapping columns
+        """
+        if not isinstance(right, Quack):
+            raise TypeError("right must be a Quack object")
+
+        return self._copy_with((
+            "merge",
+            {
+                "right": right,
+                "how": how,
+                "on": on,
+                "left_on": left_on,
+                "right_on": right_on,
+                "suffixes": suffixes
+            }
+    ))
+    
+    # def join(self, other, on=None, how="left", lsuffix="", rsuffix=""):
+    #     """
+    #     Join two Quack DataFrames together, similar to pandas.DataFrame.join().
+        
+    #     Parameters:
+    #         other (Quack): another Quack table
+    #         on (str or list): column(s) to join on
+    #         how (str): one of 'left', 'right', 'inner', 'outer'
+    #         lsuffix (str): suffix for overlapping columns in left
+    #         rsuffix (str): suffix for overlapping columns in right
+    #     """
+    #     if not isinstance(other, Quack):
+    #         raise TypeError("Only joining with another Quack is supported.")
+
+    #     return self._copy_with((
+    #         "join", {
+    #             "other": other,
+    #             "on": on,
+    #             "how": how,
+    #             "lsuffix": lsuffix,
+    #             "rsuffix": rsuffix
+    #         }
+    #     ))
