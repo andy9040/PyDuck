@@ -5,3 +5,6 @@ env/
 __pycache__/
 *.py[cod]
 *$py.class
+pyduck/__pycache__/
+pyduck/operations/__pycache__/
+
