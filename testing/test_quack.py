@@ -578,24 +578,22 @@ def test_merge_with_fillna():
     assert result.loc[result["id"] == 2, "extra"].iloc[0] == 0
 
 
+def test_order_by_single_column():
+    q = Quack("lineitem")
+    q_sorted = q.sort_values(by="l_quantity")
+    sql = q_sorted.to_sql()
+    assert "ORDER BY l_quantity ASC" in sql, f"Unexpected SQL: {sql}"
 
+def test_order_by_multiple_columns_desc():
+    q = Quack("lineitem")
+    q_sorted = q.sort_values(by=["l_returnflag", "l_linestatus"], ascending=[True, False])
+    sql = q_sorted.to_sql()
+    expected = "ORDER BY l_returnflag ASC, l_linestatus DESC"
+    assert expected in sql, f"Expected '{expected}' in SQL, got: {sql}"
 
-
-# def test_join_quack():
-#     df1 = pd.DataFrame({"key": ["K0", "K1", "K2", "K3"], "A": ["A0", "A1", "A2", "A3"]})
-#     df2 = pd.DataFrame({"key": ["K0", "K1", "K2"], "B": ["B0", "B1", "B2"]})
-
-#     conn = duckdb.connect()
-#     conn.register("left_table", df1)
-#     conn.register("right_table", df2)
-
-#     q1 = Quack("left_table", conn=conn)
-#     q2 = Quack("right_table", conn=conn)
-
-#     joined = q1.join(q2, on="key", lsuffix="_left", rsuffix="_right").to_df()
-#     print(joined)
-
-#     assert "key" in joined.columns
-#     assert "A_left" in joined.columns or "A" in joined.columns
-#     assert "B_right" in joined.columns or "B" in joined.columns
-#     assert joined.shape[0] == 4
+def test_order_by_then_limit():
+    q = Quack("lineitem")
+    q_sorted = q.sort_values(by="l_extendedprice", ascending=False).head(5)
+    sql = q_sorted.to_sql()
+    assert "ORDER BY l_extendedprice DESC" in sql
+    assert "LIMIT 5 OFFSET 0" in sql

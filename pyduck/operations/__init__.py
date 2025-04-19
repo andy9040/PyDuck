@@ -10,7 +10,8 @@ from .drop_columns import apply_drop_columns
 from .drop_duplicates import apply_drop_duplicates
 from .sample import apply_sample
 from .merge import apply_merge
-# from .join import apply_join  
+from .order_by import apply_order_by
+
 
 def apply_operation(query, op, val, **kwargs):
     if op == "filter":
@@ -43,6 +44,9 @@ def apply_operation(query, op, val, **kwargs):
         return apply_sample(query, val, **kwargs)
     elif op == "merge":
         return apply_merge(query, val, **kwargs)
+    elif op == "order_by": 
+        return apply_order_by(query, val)
+
     # elif op == "join":
     #     return apply_join(query, val, **kwargs) 
     else:

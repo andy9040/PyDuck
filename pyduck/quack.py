@@ -236,26 +236,26 @@ class Quack:
             }
     ))
     
-    # def join(self, other, on=None, how="left", lsuffix="", rsuffix=""):
-    #     """
-    #     Join two Quack DataFrames together, similar to pandas.DataFrame.join().
-        
-    #     Parameters:
-    #         other (Quack): another Quack table
-    #         on (str or list): column(s) to join on
-    #         how (str): one of 'left', 'right', 'inner', 'outer'
-    #         lsuffix (str): suffix for overlapping columns in left
-    #         rsuffix (str): suffix for overlapping columns in right
-    #     """
-    #     if not isinstance(other, Quack):
-    #         raise TypeError("Only joining with another Quack is supported.")
+    def head(self, n=5):
+        """
+        Limit the number of rows returned. Equivalent to pandas' head().
+        """
+        return self._copy_with(("limit_offset", (n, 0)))
+    
+    
+    def sort_values(self, by, ascending=True):
+        """
+        Sort by one or more columns.
+        """
+        if isinstance(by, str):
+            by = [by]
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(by) != len(ascending):
+            raise ValueError("Length of 'by' and 'ascending' must match")
 
-    #     return self._copy_with((
-    #         "join", {
-    #             "other": other,
-    #             "on": on,
-    #             "how": how,
-    #             "lsuffix": lsuffix,
-    #             "rsuffix": rsuffix
-    #         }
-    #     ))
+        order_by = [
+            f"{col} {'ASC' if asc else 'DESC'}"
+            for col, asc in zip(by, ascending)
+        ]
+        return self._copy_with(("order_by", order_by))
