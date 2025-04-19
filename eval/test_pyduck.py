@@ -18,14 +18,14 @@ result = (
     )
     .groupby(["l_returnflag", "l_linestatus"])
     .agg({
-        "sum_qty": "sum(l_quantity)",
-        "sum_base_price": "sum(l_extendedprice)",
-        "sum_disc_price": "sum(disc_price)",
-        "sum_charge": "sum(charge)",
-        "avg_qty": "avg(l_quantity)",
-        "avg_price": "avg(l_extendedprice)",
-        "avg_disc": "avg(l_discount)",
-        "count_order": "count(*)"
+        "l_quantity": "sum",
+        "l_extendedprice": "sum",
+        "disc_price": "sum",
+        "charge": "sum",
+        "l_quantity": "avg",
+        "l_extendedprice": "avg",
+        "l_discount": "avg",
+        "l_quantity": "count"
     })
     .sort_values(by=["l_returnflag", "l_linestatus"])
     .head(1)
