@@ -17,6 +17,22 @@ class FrameworkTester:
         pass
 
     @abstractmethod
+    def tpc_q4(self):
+        pass
+
+    @ abstractmethod
+    def tpc_q6(self):
+        pass
+
+    @ abstractmethod
+    def tpc_q11(self):
+        pass
+
+    @abstractmethod
+    def tpc_q14(self):
+        pass
+
+    @abstractmethod
     def test_something2(self):
         pass
 

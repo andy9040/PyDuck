@@ -47,38 +47,170 @@ class PandaTester(FrameworkTester):
         result_df = agg.sort_values(["l_returnflag", "l_linestatus"])
 
         print(result_df)
-        return result_df  # type: ignore[no-any-return]
+        return result_df
     
-    def tpc_q3(self):
-        customer_ds = self.duckdb_con.execute("SELECT * FROM customer").fetchdf()
+    # IGNORE FOR NOW
+    # def tpc_q3(self):
+    #     customer_ds = self.duckdb_con.execute("SELECT * FROM customer").fetchdf()
+    #     line_item_ds = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
+    #     orders_ds = self.duckdb_con.execute("SELECT * FROM orders").fetchdf()
+
+    #     var1 = "BUILDING"
+    #     var2 = pd.Timestamp("1995-03-15")
+
+    #     fcustomer = customer_ds[customer_ds["c_mktsegment"] == var1]
+
+    #     jn1 = fcustomer.merge(orders_ds, left_on="c_custkey", right_on="o_custkey")
+    #     jn2 = jn1.merge(line_item_ds, left_on="o_orderkey", right_on="l_orderkey")
+
+    #     jn2 = jn2[jn2["o_orderdate"] < var2]
+    #     jn2 = jn2[jn2["l_shipdate"] > var2]
+    #     jn2["revenue"] = jn2.l_extendedprice * (1 - jn2.l_discount)
+
+    #     gb = jn2.groupby(
+    #         ["o_orderkey", "o_orderdate", "o_shippriority"], as_index=False
+    #     )
+    #     agg = gb["revenue"].sum()
+
+    #     sel = agg.loc[:, ["o_orderkey", "revenue", "o_orderdate", "o_shippriority"]]
+    #     sel = sel.rename(columns={"o_orderkey": "l_orderkey"})
+
+    #     sorted = sel.sort_values(by=["revenue", "o_orderdate"], ascending=[False, True])
+    #     result_df = sorted.head(10)
+
+    #     print(result_df)
+    #     return
+    
+    def tpc_q4(self):
         line_item_ds = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
         orders_ds = self.duckdb_con.execute("SELECT * FROM orders").fetchdf()
 
-        var1 = "BUILDING"
-        var2 = pd.Timestamp("1995-03-15")
+        var1 = pd.Timestamp(1993, 7, 1)
+        var2 = pd.Timestamp(1993, 10, 1)
 
-        fcustomer = customer_ds[customer_ds["c_mktsegment"] == var1]
+        jn = line_item_ds.merge(orders_ds, left_on="l_orderkey", right_on="o_orderkey")
 
-        jn1 = fcustomer.merge(orders_ds, left_on="c_custkey", right_on="o_custkey")
-        jn2 = jn1.merge(line_item_ds, left_on="o_orderkey", right_on="l_orderkey")
+        jn = jn[(jn["o_orderdate"] >= var1) & (jn["o_orderdate"] < var2)]
+        jn = jn[jn["l_commitdate"] < jn["l_receiptdate"]]
 
-        jn2 = jn2[jn2["o_orderdate"] < var2]
-        jn2 = jn2[jn2["l_shipdate"] > var2]
-        jn2["revenue"] = jn2.l_extendedprice * (1 - jn2.l_discount)
+        jn = jn.drop_duplicates(subset=["o_orderpriority", "l_orderkey"])
 
-        gb = jn2.groupby(
-            ["o_orderkey", "o_orderdate", "o_shippriority"], as_index=False
-        )
-        agg = gb["revenue"].sum()
+        gb = jn.groupby("o_orderpriority", as_index=False)
+        agg = gb.agg(order_count=pd.NamedAgg(column="o_orderkey", aggfunc="count"))
 
-        sel = agg.loc[:, ["o_orderkey", "revenue", "o_orderdate", "o_shippriority"]]
-        sel = sel.rename(columns={"o_orderkey": "l_orderkey"})
+        result_df = agg.sort_values(["o_orderpriority"])
+        
+        print(result_df)
+        return result_df
+    
+    def tpc_q6(self):
+        line_item_ds = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
 
-        sorted = sel.sort_values(by=["revenue", "o_orderdate"], ascending=[False, True])
-        result_df = sorted.head(10)
+        var1 = pd.Timestamp(1994, 1, 1)
+        var2 = pd.Timestamp(1995, 1, 1)
+        var3 = 0.05
+        var4 = 0.07
+        var5 = 24
+
+        filt = line_item_ds[
+            (line_item_ds["l_shipdate"] >= var1) & (line_item_ds["l_shipdate"] < var2)
+        ]
+        filt = filt[(filt["l_discount"] >= var3) & (filt["l_discount"] <= var4)]
+        filt = filt[filt["l_quantity"] < var5]
+        result_value = (filt["l_extendedprice"] * filt["l_discount"]).sum()
+        result_df = pd.DataFrame({"revenue": [result_value]})
 
         print(result_df)
-        return
+        return result_df
+    
+    def tpc_q11(self, nation_name: str = "GERMANY"):
+        nation = self.duckdb_con.execute("SELECT * FROM nation").fetchdf()
+        supplier = self.duckdb_con.execute("SELECT * FROM supplier").fetchdf()
+        partsupp = self.duckdb_con.execute("SELECT * FROM partsupp").fetchdf()
+
+        print(partsupp.head())
+
+        # 1) Find the nation key for “GERMANY”
+        nation_key = nation.loc[
+            nation["n_name"] == nation_name, "n_nationkey"
+        ].iloc[0]
+
+        # 2) Filter supplier to that nation
+        sup_filt = supplier[supplier["s_nationkey"] == nation_key]
+
+        # 3) Join partsupp ⇄ supplier (inner join on supplier key)
+        ps_sup = (
+            partsupp
+            .merge(
+                sup_filt[["s_suppkey"]],
+                left_on="ps_suppkey",
+                right_on="s_suppkey",
+                how="inner"
+            )
+        )
+
+        # 4) Compute TOTAL_COST = supplycost * availqty
+        ps_sup = ps_sup.copy()
+        ps_sup["value"] = ps_sup["ps_supplycost"] * ps_sup["ps_availqty"]
+
+        # 5) Aggregate VALUE by part
+        total = (
+            ps_sup
+            .groupby("ps_partkey", as_index=False)
+            .agg(value=("value", "sum"))
+        )
+
+        # 6) Threshold = 0.0001 × sum of all VALUEs
+        threshold = total["value"].sum() * 0.0001
+
+        # 7) Filter and sort
+        result = (
+            total[total["value"] > threshold]
+            .sort_values("value", ascending=False)
+            .reset_index(drop=True)
+        )
+
+        print(result)
+        return result
+
+
+    # def tpc_q14(self):
+    #     # 1) Load the full tables
+    #     lineitem = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
+    #     part = self.duckdb_con.execute("SELECT * FROM part").fetchdf()
+
+    #     # 2) Define the ship‑date range for all of 1994
+    #     start = pd.Timestamp("1995-09-01")
+    #     end   = pd.Timestamp("1995-10-01")
+
+    #     # 3) Filter lineitem rows by ship date
+    #     mask = (lineitem["l_shipdate"] >= start) & (lineitem["l_shipdate"] < end)
+    #     li = lineitem.loc[mask].copy()
+
+    #     # 4) Compute per‑row revenue
+    #     li["revenue"] = li["l_extendedprice"] * (1 - li["l_discount"])
+
+    #     # 5) Join to the full part table
+    #     df = li.merge(
+    #         part,
+    #         left_on="l_partkey",
+    #         right_on="p_partkey",
+    #         how="inner"
+    #     )
+
+    #     # 6) Identify PROMO items
+    #     promo_mask = df["p_type"].str.startswith("PROMO")
+
+    #     # 7) Sum up promo vs. total revenue
+    #     promo_rev = df.loc[promo_mask, "revenue"].sum()
+    #     total_rev = df["revenue"].sum()
+
+    #     # 8) Compute the percentage
+    #     promo_pct = 100.0 * promo_rev / total_rev
+
+    #     print(promo_pct)
+    #     return promo_pct
+
 
 
     def test_sample(self):
@@ -137,7 +269,9 @@ class PandaTester(FrameworkTester):
 con = duckdb.connect('tpch.duckdb')
 p = PandaTester(con)
 p.tpc_q1()
-p.tpc_q3()
+p.tpc_q4()
+p.tpc_q6()
+p.tpc_q11()
 p.test_drop_columns()
 p.test_drop_duplicates()
 p.test_dropna()
