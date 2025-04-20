@@ -1,7 +1,7 @@
 from pyduck.quack import Quack
 from datetime import datetime, timedelta
 import duckdb
-from framework_tester import FrameworkTester
+from eval.frameworkTester import FrameworkTester
 
 class PyDuckTester(FrameworkTester):
     def tpc_q1(self):
@@ -33,8 +33,6 @@ class PyDuckTester(FrameworkTester):
             .sort_values(by=["l_returnflag", "l_linestatus"])
             .to_df()
         )
-        print(result)
-        return   
 
     # NOT WORKING
     # def tpc_q3(self):
@@ -139,8 +137,6 @@ class PyDuckTester(FrameworkTester):
             .to_df()
         )
 
-        print(result_df)
-        return result_df
 
     def tpc_q6(self):
         # 1) Parameters (DuckDB will parse these DATE literals and numerics)
@@ -172,8 +168,6 @@ class PyDuckTester(FrameworkTester):
             .to_df()                                
         )
 
-        print(result_df)
-        return result_df
     
     from pyduck import Quack
 
@@ -187,7 +181,6 @@ class PyDuckTester(FrameworkTester):
             .iloc[0, 0]
         )
 
-        print(nation_key)
 
         # 2) Compute the global total for that nation: SUM(ps_supplycost * ps_availqty)
         global_sum_df = (
@@ -222,8 +215,6 @@ class PyDuckTester(FrameworkTester):
             .to_df()
         )
 
-        print(result_df)
-        return result_df
 
     
     # def tpc_q14(self):
@@ -301,10 +292,10 @@ class PyDuckTester(FrameworkTester):
 
 
     
-    def debug_fillna(self):
-        nation = Quack("nation", self.duckdb_con).to_df()
-        print(nation)
-        return nation
+    # def debug_fillna(self):
+    #     nation = Quack("nation", self.duckdb_con).to_df()
+    #     print(nation)
+    #     return nation
 
     def test_dropna(self):
         orders = Quack("orders", self.duckdb_con)
@@ -332,13 +323,13 @@ class PyDuckTester(FrameworkTester):
             .to_df()
         )
     
-if __name__ == '__main__':
-    con = duckdb.connect('tpch.duckdb')
-    quack = PyDuckTester(con)
-    quack.tpc_q1()
-    quack.tpc_q4()
-    quack.tpc_q6()
-    quack.tpc_q11()
-    quack.test_fillna()
-    # quack.debug_fillna()
+# if __name__ == '__main__':
+#     con = duckdb.connect('tpch.duckdb')
+#     quack = PyDuckTester(con)
+#     quack.tpc_q1()
+#     quack.tpc_q4()
+#     quack.tpc_q6()
+#     quack.tpc_q11()
+#     quack.test_fillna()
+#     # quack.debug_fillna()
 

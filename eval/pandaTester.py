@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime, timedelta
-from framework_tester import FrameworkTester
+from eval.frameworkTester import FrameworkTester
 from datetime import date
 from typing import TYPE_CHECKING
 import duckdb
@@ -46,8 +46,6 @@ class PandaTester(FrameworkTester):
 
         result_df = agg.sort_values(["l_returnflag", "l_linestatus"])
 
-        print(result_df)
-        return result_df
     
     # IGNORE FOR NOW
     # def tpc_q3(self):
@@ -100,8 +98,6 @@ class PandaTester(FrameworkTester):
 
         result_df = agg.sort_values(["o_orderpriority"])
         
-        print(result_df)
-        return result_df
     
     def tpc_q6(self):
         line_item_ds = self.lineitem
@@ -120,15 +116,11 @@ class PandaTester(FrameworkTester):
         result_value = (filt["l_extendedprice"] * filt["l_discount"]).sum()
         result_df = pd.DataFrame({"revenue": [result_value]})
 
-        print(result_df)
-        return result_df
     
     def tpc_q11(self, nation_name: str = "GERMANY"):
         nation = self.nation
         supplier = self.supplier
         partsupp = self.partsupp
-
-        print(partsupp.head())
 
         # 1) Find the nation key for “GERMANY”
         nation_key = nation.loc[
@@ -170,8 +162,6 @@ class PandaTester(FrameworkTester):
             .reset_index(drop=True)
         )
 
-        print(result)
-        return result
 
 
     # def tpc_q14(self):
@@ -226,8 +216,7 @@ class PandaTester(FrameworkTester):
     def test_drop_columns(self):
         part = self.part
         reduced = part.drop(columns=["p_comment", "p_retailprice"])
-        print("Part table without COMMENT and RETAILPRICE:\n", reduced.head())
-        return reduced
+        head =  reduced.head()
 
     def test_fillna(self):
         # Work on a copy
@@ -272,21 +261,20 @@ class PandaTester(FrameworkTester):
             )
             .reset_index()
         )
-        print("Lineitem grouped by RETURNFLAG:\n", grouped)
 
 
 
-con = duckdb.connect('tpch.duckdb')
-p = PandaTester(con)
-p.tpc_q1()
-p.tpc_q4()
-p.tpc_q6()
-p.tpc_q11()
-p.test_drop_columns()
-p.test_drop_duplicates()
-p.test_dropna()
-p.test_fillna()
-p.test_get_dummies()
-p.test_groupby_agg()
-p.test_isna_sum()
-p.test_sample()
+# con = duckdb.connect('tpch.duckdb')
+# p = PandaTester(con)
+# p.tpc_q1()
+# p.tpc_q4()
+# p.tpc_q6()
+# p.tpc_q11()
+# p.test_drop_columns()
+# p.test_drop_duplicates()
+# p.test_dropna()
+# p.test_fillna()
+# p.test_get_dummies()
+# p.test_groupby_agg()
+# p.test_isna_sum()
+# p.test_sample()
