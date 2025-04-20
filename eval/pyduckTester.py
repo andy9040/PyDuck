@@ -271,10 +271,67 @@ class PyDuckTester(FrameworkTester):
     #     print(result_df)
     #     return result_df
 
+    
+    def test_sample(self):
+        customer = Quack("customer", self.duckdb_con)
+        result = customer.sample(n=5).to_df()
+
+    def test_drop_duplicates(self):
+        supplier = Quack("supplier", self.duckdb_con)
+        result = supplier.drop_duplicates(subset="s_nationkey").to_df()
+
+    def test_drop_columns(self):
+        part = Quack("part", self.duckdb_con)
+        result = part.drop(columns=["p_comment", "p_retailprice"]).to_df()
 
 
+    def test_fillna(self):
+
+        # 1) Load lineitem and inject NULLs directly into l_discount
+        dp = Quack("lineitem", conn=self.duckdb_con)
+        dp["l_discount"] = "CASE WHEN l_discount < 0.05 THEN NULL ELSE l_discount END"
+
+        # 2) Fill remaining NULLs in the same column with its mean
+        #    Pass a dict so it only applies to l_discount
+        dp_filled = dp.fillna({"l_discount": "mean"})
+
+        # 3) Execute
+        df = dp_filled.to_df()
+        return df
 
 
+    
+    def debug_fillna(self):
+        nation = Quack("nation", self.duckdb_con).to_df()
+        print(nation)
+        return nation
+
+    def test_dropna(self):
+        orders = Quack("orders", self.duckdb_con)
+        result = orders.dropna().to_df()
+
+    def test_isna_sum(self):
+        orders = Quack("orders", self.duckdb_con)
+        result = orders.isna().sum().to_df()
+
+    def test_get_dummies(self):
+        customer = Quack("customer", self.duckdb_con)
+        customer.get_dummies("c_mktsegment", values=["BUILDING", "AUTOMOBILE", "MACHINERY"])
+        result = customer.to_df()
+
+    def test_groupby_agg(self):
+        lineitem = Quack("lineitem", self.duckdb_con)
+        result = (
+            lineitem
+            .groupby("l_returnflag")
+            .agg({
+                "l_quantity": "sum",
+                "l_extendedprice": "avg",
+                "l_orderkey": "count"
+            })
+            .to_df()
+        )
+    
 if __name__ == '__main__':
     con = duckdb.connect('tpch.duckdb')
     quack = PyDuckTester(con)
@@ -282,3 +339,6 @@ if __name__ == '__main__':
     quack.tpc_q4()
     quack.tpc_q6()
     quack.tpc_q11()
+    quack.test_fillna()
+    # quack.debug_fillna()
+

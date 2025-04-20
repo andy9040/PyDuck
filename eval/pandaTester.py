@@ -1,9 +1,9 @@
 import pandas as pd
 from datetime import datetime, timedelta
-import duckdb
 from framework_tester import FrameworkTester
 from datetime import date
 from typing import TYPE_CHECKING
+import duckdb
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -18,11 +18,11 @@ class PandaTester(FrameworkTester):
     #     """
 
     def tpc_q1(self):
-        line_item_ds = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
+        lineitem = self.lineitem
 
         var1 = pd.Timestamp(1998, 9, 2)
 
-        filt = line_item_ds[line_item_ds["l_shipdate"] <= var1]
+        filt = lineitem[lineitem["l_shipdate"] <= var1]
 
         # This is lenient towards pandas as normally an optimizer should decide
         # that this could be computed before the groupby aggregation.
@@ -82,8 +82,8 @@ class PandaTester(FrameworkTester):
     #     return
     
     def tpc_q4(self):
-        line_item_ds = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
-        orders_ds = self.duckdb_con.execute("SELECT * FROM orders").fetchdf()
+        line_item_ds = self.lineitem
+        orders_ds = self.orders
 
         var1 = pd.Timestamp(1993, 7, 1)
         var2 = pd.Timestamp(1993, 10, 1)
@@ -104,7 +104,7 @@ class PandaTester(FrameworkTester):
         return result_df
     
     def tpc_q6(self):
-        line_item_ds = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
+        line_item_ds = self.lineitem
 
         var1 = pd.Timestamp(1994, 1, 1)
         var2 = pd.Timestamp(1995, 1, 1)
@@ -124,9 +124,9 @@ class PandaTester(FrameworkTester):
         return result_df
     
     def tpc_q11(self, nation_name: str = "GERMANY"):
-        nation = self.duckdb_con.execute("SELECT * FROM nation").fetchdf()
-        supplier = self.duckdb_con.execute("SELECT * FROM supplier").fetchdf()
-        partsupp = self.duckdb_con.execute("SELECT * FROM partsupp").fetchdf()
+        nation = self.nation
+        supplier = self.supplier
+        partsupp = self.partsupp
 
         print(partsupp.head())
 
@@ -214,51 +214,61 @@ class PandaTester(FrameworkTester):
 
 
     def test_sample(self):
-        customer = self.duckdb_con.execute("SELECT * FROM customer").fetchdf()
+        customer = self.customer
         sample = customer.sample(5)
-        print("Sample 5 customers:\n", sample)
+        return sample
 
     def test_drop_duplicates(self):
-        supplier = self.duckdb_con.execute("SELECT * FROM supplier").fetchdf()
-        deduped = supplier.drop_duplicates(subset=["nationkey"])
-        print("Suppliers with unique nationkeys:\n", deduped)
+        supplier = self.supplier
+        deduped = supplier.drop_duplicates(subset=["s_nationkey"])
+        return deduped
 
     def test_drop_columns(self):
-        part = self.duckdb_con.execute("SELECT * FROM part").fetchdf()
-        # print(part.head())
-        reduced = part.drop(columns=["COMMENT", "RETAILPRICE"])
+        part = self.part
+        reduced = part.drop(columns=["p_comment", "p_retailprice"])
         print("Part table without COMMENT and RETAILPRICE:\n", reduced.head())
+        return reduced
 
     def test_fillna(self):
-        nation = self.duckdb_con.execute("SELECT * FROM nation").fetchdf()
-        nation["COMMENT"] = nation["COMMENT"].fillna("No comment")
-        print("Nation table with COMMENT nulls filled:\n", nation.head())
+        # Work on a copy
+        lineitem = self.lineitem.copy()
+
+        # 2) Inject NULLs where discount < 0.05
+        lineitem.loc[:, "l_discount_null"] = lineitem["l_discount"].mask(
+            lineitem["l_discount"] < 0.05,
+            other=pd.NA
+        )
+
+        # 3) Compute the mean of the “null‑augmented” series
+        mean_discount = lineitem["l_discount_null"].mean()
+
+        # 4) Fill the NULLs with that mean
+        lineitem["l_discount_null"] = lineitem["l_discount_null"].fillna(mean_discount)
+
+        return lineitem
 
     def test_dropna(self):
-        orders = self.duckdb_con.execute("SELECT * FROM orders").fetchdf()
-        clean_orders = orders.dropna(subset=["CLERK"])
-        print("Orders with non-null CLERK values:\n", clean_orders.head())
+        orders = self.orders
+        clean_orders = orders.dropna(subset=["o_clerk"])
 
     def test_isna_sum(self):
-        orders = self.duckdb_con.execute("SELECT * FROM orders").fetchdf()
+        orders = self.orders
         missing_counts = orders.isna().sum()
-        print("Missing values per column in ORDERS:\n", missing_counts)
 
     def test_get_dummies(self):
-        customer = self.duckdb_con.execute("SELECT * FROM customer").fetchdf()
-        dummies = pd.get_dummies(customer[["MKTSEGMENT"]])
-        print("Market Segment One-Hot Encoding:\n", dummies.head())
+        customer = self.customer
+        dummies = pd.get_dummies(customer[["c_mktsegment"]])
 
     def test_groupby_agg(self):
-        lineitem = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
+        lineitem = self.lineitem
         # Convert date columns if needed
-        lineitem["SHIPDATE"] = pd.to_datetime(lineitem["SHIPDATE"])
+        lineitem["l_shipdate"] = pd.to_datetime(lineitem["l_shipdate"])
         grouped = (
-            lineitem.groupby(["RETURNFLAG"])
+            lineitem.groupby(["l_returnflag"])
             .agg(
-                total_quantity=("QUANTITY", "sum"),
-                avg_price=("EXTENDEDPRICE", "mean"),
-                order_count=("ORDERKEY", "nunique")
+                total_quantity=("l_quantity", "sum"),
+                avg_price=("l_extendedprice", "mean"),
+                order_count=("l_orderkey", "nunique")
             )
             .reset_index()
         )
