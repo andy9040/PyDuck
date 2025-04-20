@@ -1,13 +1,11 @@
 import pandas as pd
 from datetime import datetime, timedelta
-import duckdb
 from framework_tester import FrameworkTester
 
 class PandaTester(FrameworkTester):
 
     def tpc_q1(self):
-        # Example: Load DuckDB result into a pandas DataFrame
-        lineitem = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
+        lineitem = self.lineitem
 
         # Ensure l_shipdate is in datetime format
         lineitem["l_shipdate"] = pd.to_datetime(lineitem["l_shipdate"])
@@ -39,64 +37,45 @@ class PandaTester(FrameworkTester):
         )
 
     def test_sample(self):
-        customer = self.duckdb_con.execute("SELECT * FROM customer").fetchdf()
+        customer = self.customer
         sample = customer.sample(5)
-        print("Sample 5 customers:\n", sample)
 
     def test_drop_duplicates(self):
-        supplier = self.duckdb_con.execute("SELECT * FROM supplier").fetchdf()
-        deduped = supplier.drop_duplicates(subset=["nationkey"])
-        print("Suppliers with unique nationkeys:\n", deduped)
+        supplier = self.supplier
+        # print(supplier.head(5))
+        deduped = supplier.drop_duplicates(subset=["s_nationkey"])
+        # print("Suppliers with unique nationkeys:\n", deduped)
 
     def test_drop_columns(self):
-        part = self.duckdb_con.execute("SELECT * FROM part").fetchdf()
-        reduced = part.drop(columns=["COMMENT", "RETAILPRICE"])
-        print("Part table without COMMENT and RETAILPRICE:\n", reduced.head())
+        part = self.part
+        reduced = part.drop(columns=["p_comment", "p_retailprice"])
 
     def test_fillna(self):
-        nation = self.duckdb_con.execute("SELECT * FROM nation").fetchdf()
-        nation["COMMENT"] = nation["COMMENT"].fillna("No comment")
-        print("Nation table with COMMENT nulls filled:\n", nation.head())
+        nation = self.nation
+        nation["n_comment"] = nation["n_comment"].fillna("No comment")
 
     def test_dropna(self):
-        orders = self.duckdb_con.execute("SELECT * FROM orders").fetchdf()
-        clean_orders = orders.dropna(subset=["CLERK"])
-        print("Orders with non-null CLERK values:\n", clean_orders.head())
+        orders = self.orders
+        clean_orders = orders.dropna(subset=["o_clerk"])
 
     def test_isna_sum(self):
-        orders = self.duckdb_con.execute("SELECT * FROM orders").fetchdf()
+        orders = self.orders
         missing_counts = orders.isna().sum()
-        print("Missing values per column in ORDERS:\n", missing_counts)
 
     def test_get_dummies(self):
-        customer = self.duckdb_con.execute("SELECT * FROM customer").fetchdf()
-        dummies = pd.get_dummies(customer[["MKTSEGMENT"]])
-        print("Market Segment One-Hot Encoding:\n", dummies.head())
+        customer = self.customer
+        dummies = pd.get_dummies(customer[["c_mktsegment"]])
 
     def test_groupby_agg(self):
-        lineitem = self.duckdb_con.execute("SELECT * FROM lineitem").fetchdf()
+        lineitem = self.lineitem
         # Convert date columns if needed
-        lineitem["SHIPDATE"] = pd.to_datetime(lineitem["SHIPDATE"])
+        lineitem["l_shipdate"] = pd.to_datetime(lineitem["l_shipdate"])
         grouped = (
-            lineitem.groupby(["RETURNFLAG"])
+            lineitem.groupby(["l_returnflag"])
             .agg(
-                total_quantity=("QUANTITY", "sum"),
-                avg_price=("EXTENDEDPRICE", "mean"),
-                order_count=("ORDERKEY", "nunique")
+                total_quantity=("l_quantity", "sum"),
+                avg_price=("l_extendedprice", "mean"),
+                order_count=("l_orderkey", "nunique")
             )
             .reset_index()
         )
-        print("Lineitem grouped by RETURNFLAG:\n", grouped)
-
-
-
-con = duckdb.connect('tpch.duckdb')
-p = PandaTester(con)
-p.test_drop_columns()
-p.test_drop_duplicates()
-p.test_dropna()
-p.test_fillna()
-p.test_get_dummies()
-p.test_groupby_agg()
-p.test_isna_sum()
-p.test_sample()

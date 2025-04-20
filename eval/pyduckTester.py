@@ -35,3 +35,45 @@ class PyDuckTester(FrameworkTester):
             .to_df()
         )
     
+    def test_sample(self):
+        customer = Quack("customer", self.duckdb_con)
+        result = customer.sample(n=5).to_df()
+
+    def test_drop_duplicates(self):
+        supplier = Quack("supplier", self.duckdb_con)
+        result = supplier.drop_duplicates(subset="s_nationkey").to_df()
+
+    def test_drop_columns(self):
+        part = Quack("part", self.duckdb_con)
+        result = part.drop(columns=["p_comment", "p_retailprice"]).to_df()
+
+    def test_fillna(self):
+        nation = Quack("nation", self.duckdb_con)
+        result = nation.fillna({"n_comment": "No comment"}).to_df()
+
+    def test_dropna(self):
+        orders = Quack("orders", self.duckdb_con)
+        result = orders.dropna().to_df()
+
+    def test_isna_sum(self):
+        orders = Quack("orders", self.duckdb_con)
+        result = orders.isna().sum().to_df()
+
+    def test_get_dummies(self):
+        customer = Quack("customer", self.duckdb_con)
+        customer.get_dummies("c_mktsegment", values=["BUILDING", "AUTOMOBILE", "MACHINERY"])
+        result = customer.to_df()
+
+    def test_groupby_agg(self):
+        lineitem = Quack("lineitem", self.duckdb_con)
+        result = (
+            lineitem
+            .groupby("l_returnflag")
+            .agg({
+                "l_quantity": "sum",
+                "l_extendedprice": "avg",
+                "l_orderkey": "count"
+            })
+            .to_df()
+        )
+
