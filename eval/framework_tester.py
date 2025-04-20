@@ -23,6 +23,11 @@ class FrameworkTester (ABC):
         pass
 
     @abstractmethod
+    def tpc_q3(self):
+        pass
+
+
+    @abstractmethod
     def test_sample(self):
         pass
 
