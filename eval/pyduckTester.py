@@ -10,7 +10,7 @@ class PyDuckTester(FrameworkTester):
         lineitem = Quack("lineitem", self.duckdb_con)
 
         # Step 2: Build and execute query
-        cutoff_date = (datetime.strptime("1998-12-01", "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+        cutoff_date = (datetime.strptime("1998-12-01", "%Y-%m-%d") - timedelta(days=90)).strftime("%Y-%m-%d")
 
         result = (
             lineitem
@@ -31,7 +31,15 @@ class PyDuckTester(FrameworkTester):
                 "l_quantity": "count"
             })
             .sort_values(by=["l_returnflag", "l_linestatus"])
-            .head(1)
             .to_df()
         )
+        print(result)
+        return
     
+    def tpc_q3(self):
+        
+
+if __name__ == '__main__':
+    con = duckdb.connect('tpch.duckdb')
+    quack = PyDuckTester(con)
+    quack.tpc_q1()
