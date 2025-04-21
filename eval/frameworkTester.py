@@ -79,7 +79,7 @@ class FrameworkTester (ABC):
     def test_groupby_agg(self):
         pass
 
-    def benchmark(self, func, *args, **kwargs):
+    def benchmark(self, func, scale, *args, **kwargs):
         """Benchmarks a function's execution time and memory usage."""
         tracemalloc.start()
         start_time = time.perf_counter()
@@ -87,13 +87,32 @@ class FrameworkTester (ABC):
         duration = time.perf_counter() - start_time
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
+        # print(f'Scale_Factor: {scale}')
+        # print(f'Class_Name: {self.__class__.__name__}')
+        # print(f"Function '{func.__name__}':")
+        # print(f"  Time: {duration:.6f} seconds")
+        # print(f"  Memory: {peak / 1024:.2f} KB\n")
 
-        print(f"Function '{func.__name__}':")
-        print(f"  Time: {duration:.6f} seconds")
-        print(f"  Memory: {peak / 1024:.2f} KB\n")
+
+        log_file  = ""
+        method_name = ""
+        if self.__class__.__name__ == "PandaTester":
+            log_file = "Pandas_Results.csv"
+            method_name = "Pandas"
+        elif self.__class__.__name__ == "PyDuckTester":
+            log_file = "Pyduck_Results.csv"
+            method_name = "Pyduck"
+        elif self.__class__.__name__ == "DuckTester":  
+            log_file = "Duckdb_Results.csv"
+            method_name = "Duckdb"
+        
+        with open(log_file, "a") as f:
+            f.write(f"{scale},{method_name},{func.__name__},{duration:.6f},{peak / 1024:.2f}\n")
+
+
         return result
 
-    def test_all(self):
+    def test_all(self, scale):
         """Runs all public instance test methods (excluding private and inherited ones) with benchmarking."""
         print(f"\nRunning all test methods in {self.__class__.__name__}:\n")
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
@@ -103,7 +122,7 @@ class FrameworkTester (ABC):
                 continue  # skip inherited methods unless overridden
 
             print("running: " + name)
-            self.benchmark(method)
+            self.benchmark(method, scale)
 
 
 
